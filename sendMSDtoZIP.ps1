@@ -1,7 +1,3 @@
-# PowerShell script to search ArcGIS Server manifest.json files for a string
-# Only searches MapServer services
-# If a match is found, it zips the .msd file(s) for that service separately
-
 # Root path of ArcGIS Server directories
 $rootPath = "D:\arcgisserver\directories\arcgissystem\arcgisinput"
 
@@ -11,12 +7,11 @@ $searchString = "ethanb"
 # Where to put packaged results
 $outputFolder = "D:\ArcGISServicePackages"
 
-# Create output folder if needed
 if (-not (Test-Path $outputFolder)) {
     New-Item -ItemType Directory -Path $outputFolder | Out-Null
 }
 
-# Get all manifest.json files under arcgisinput
+# Get all manifest.json files
 $manifestFiles = Get-ChildItem -Path $rootPath -Recurse -Filter "manifest.json" -ErrorAction SilentlyContinue
 
 foreach ($file in $manifestFiles) {
@@ -24,28 +19,28 @@ foreach ($file in $manifestFiles) {
         $jsonContent = Get-Content -Path $file.FullName -Raw
 
         if ($jsonContent -match $searchString) {
-            # Get service folder (ends with .MapServer)
+            # Get service folder (e.g. Parcels.MapServer)
             $serviceFolder = Split-Path (Split-Path $file.FullName -Parent) -Leaf
 
             if ($serviceFolder -like "*.MapServer") {
-                $servicePath = Split-Path $file.FullName -Parent
+                Write-Host ">>> Match found in service: $serviceFolder"
 
-                # Find MSD files in this service folder
-                $msdFiles = Get-ChildItem -Path $servicePath -Recurse -Filter *.msd -ErrorAction SilentlyContinue
+                # Look inside extracted/pXX for mapx files
+                $serviceDir = Split-Path (Split-Path $file.FullName -Parent) -Parent
+                $extractedDir = Join-Path $serviceDir "extracted"
 
-                if ($msdFiles) {
-                    # Build output zip name based on service folder
+                $mapxFiles = Get-ChildItem -Path $extractedDir -Recurse -Filter *.mapx -ErrorAction SilentlyContinue
+
+                if ($mapxFiles) {
                     $zipPath = Join-Path $outputFolder "$serviceFolder.zip"
-
                     if (Test-Path $zipPath) {
                         Remove-Item $zipPath -Force
                     }
-
-                    Compress-Archive -Path $msdFiles.FullName -DestinationPath $zipPath
-
-                    Write-Host "Packaged MSD for $serviceFolder into $zipPath"
-                } else {
-                    Write-Warning "No .msd file found for $serviceFolder"
+                    Compress-Archive -Path $mapxFiles.FullName -DestinationPath $zipPath
+                    Write-Host "    Packaged $($mapxFiles.Count) MAPX file(s) into $zipPath"
+                }
+                else {
+                    Write-Warning "    No .mapx file found for $serviceFolder under $extractedDir"
                 }
             }
         }
