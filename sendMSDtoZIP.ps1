@@ -1,7 +1,7 @@
 # Root path of ArcGIS Server directories
 $rootPath = "D:\arcgisserver\directories\arcgissystem\arcgisinput"
 
-# The string you want to search for
+# The string you want to search for in manifest.json
 $searchString = "ethanb"
 
 # Where to put packaged results
@@ -19,29 +19,26 @@ foreach ($file in $manifestFiles) {
         $jsonContent = Get-Content -Path $file.FullName -Raw
 
         if ($jsonContent -match $searchString) {
-            # Get service folder (e.g. Parcels.MapServer)
+            # Service folder (e.g. Parcels.MapServer)
             $serviceFolder = Split-Path (Split-Path $file.FullName -Parent) -Leaf
 
             if ($serviceFolder -like "*.MapServer") {
                 Write-Host ">>> Match found in service: $serviceFolder"
 
-                # Look inside extracted/pXX for mapx files
+                # Full path to the service folder
                 $serviceDir = Split-Path (Split-Path $file.FullName -Parent) -Parent
-                $extractedDir = Join-Path $serviceDir "extracted"
 
-                $mapxFiles = Get-ChildItem -Path $extractedDir -Recurse -Filter *.mapx -ErrorAction SilentlyContinue
+                # Output zip path
+                $zipPath = Join-Path $outputFolder "$serviceFolder.zip"
 
-                if ($mapxFiles) {
-                    $zipPath = Join-Path $outputFolder "$serviceFolder.zip"
-                    if (Test-Path $zipPath) {
-                        Remove-Item $zipPath -Force
-                    }
-                    Compress-Archive -Path $mapxFiles.FullName -DestinationPath $zipPath
-                    Write-Host "    Packaged $($mapxFiles.Count) MAPX file(s) into $zipPath"
+                if (Test-Path $zipPath) {
+                    Remove-Item $zipPath -Force
                 }
-                else {
-                    Write-Warning "    No .mapx file found for $serviceFolder under $extractedDir"
-                }
+
+                # Zip the entire service folder
+                Compress-Archive -Path $serviceDir -DestinationPath $zipPath
+
+                Write-Host "    Packaged full service folder into $zipPath"
             }
         }
     }
