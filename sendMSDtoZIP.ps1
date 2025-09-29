@@ -4,11 +4,11 @@ $rootPath = "D:\arcgisserver\directories\arcgissystem\arcgisinput"
 # The string you want to search for in manifest.json
 $searchString = "ethanb"
 
-# Where to put packaged results
-$outputFolder = "D:\ArcGISServicePackages"
+# Destination folder for copied services
+$destRoot = "E:\ArcGISServiceCopies"
 
-if (-not (Test-Path $outputFolder)) {
-    New-Item -ItemType Directory -Path $outputFolder | Out-Null
+if (-not (Test-Path $destRoot)) {
+    New-Item -ItemType Directory -Path $destRoot | Out-Null
 }
 
 # Get all manifest.json files
@@ -28,21 +28,22 @@ foreach ($file in $manifestFiles) {
                 # Full path to the service folder
                 $serviceDir = Split-Path (Split-Path $file.FullName -Parent) -Parent
 
-                # Output zip path
-                $zipPath = Join-Path $outputFolder "$serviceFolder.zip"
+                # Destination path
+                $destPath = Join-Path $destRoot $serviceFolder
 
-                if (Test-Path $zipPath) {
-                    Remove-Item $zipPath -Force
+                # Remove old copy if it exists
+                if (Test-Path $destPath) {
+                    Remove-Item -Path $destPath -Recurse -Force
                 }
 
-                # Zip the entire service folder
-                Compress-Archive -Path $serviceDir -DestinationPath $zipPath
+                # Copy entire service folder
+                Copy-Item -Path $serviceDir -Destination $destPath -Recurse -Force
 
-                Write-Host "    Packaged full service folder into $zipPath"
+                Write-Host "    Copied $serviceFolder to $destPath"
             }
         }
     }
     catch {
-        Write-Warning "Failed to read $($file.FullName): $_"
+        Write-Warning "Failed to process $($file.FullName): $_"
     }
 }
